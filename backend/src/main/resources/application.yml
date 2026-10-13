@@ -1,0 +1,53 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: stock-trading-system
+  datasource:
+    url: jdbc:h2:mem:stockdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ''
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+      settings:
+        web-allow-others: true
+  jackson:
+    default-property-inclusion: non_null
+    time-zone: GMT+8
+    date-format: yyyy-MM-dd HH:mm:ss
+
+# 切换到 MySQL 时把上面的 datasource / jpa 换成下面这段，并删除 h2 依赖的 runtime scope 限制
+#  datasource:
+#    url: jdbc:mysql://localhost:3306/stockdb?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+#    driver-class-name: com.mysql.cj.jdbc.Driver
+#    username: root
+#    password: root
+#  jpa:
+#    database-platform: org.hibernate.dialect.MySQLDialect
+#    hibernate:
+#      ddl-auto: update
+
+app:
+  jwt:
+    # 生产环境必须替换为环境变量注入的强随机密钥
+    secret: ${JWT_SECRET:stock-trading-system-dev-secret-key-please-change-in-production-0123456789}
+    # 有效期（毫秒），默认 24 小时
+    expiration: 86400000
+
+logging:
+  level:
+    com.stocktrading: INFO
+    org.springframework.security: WARN

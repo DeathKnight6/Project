@@ -1,0 +1,43 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "java",
+      "name": "Backend: Debug (Spring Boot)",
+      "request": "launch",
+      "mainClass": "com.stocktrading.StockTradingApplication",
+      "projectName": "stock-trading-system",
+      "cwd": "${workspaceFolder}/backend",
+      "env": {
+        "JAVA_HOME": "D:\\jdk-25\\jdk-25.0.2"
+      },
+      "console": "internalConsole",
+      "preLaunchTask": "backend:run"
+    },
+    {
+      "type": "java",
+      "name": "Backend: Attach to 8080",
+      "request": "attach",
+      "hostName": "localhost",
+      "port": 5005
+    },
+    {
+      "type": "chrome",
+      "name": "Frontend: Chrome",
+      "request": "launch",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}/frontend/src",
+      "sourceMapPathOverrides": {
+        "webpack:///./src/*": "${webRoot}/*",
+        "/src/*": "${webRoot}/*"
+      }
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Full Stack Debug",
+      "configurations": ["Backend: Debug (Spring Boot)", "Frontend: Chrome"],
+      "stopAll": true
+    }
+  ]
+}

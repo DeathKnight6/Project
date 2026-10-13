@@ -1,0 +1,82 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "backend:run",
+      "type": "shell",
+      "command": "mvn",
+      "args": ["spring-boot:run"],
+      "options": {
+        "cwd": "${workspaceFolder}/backend",
+        "env": {
+          "JAVA_HOME": "D:\\jdk-25\\jdk-25.0.2",
+          "PATH": "D:\\apache-maven-3.9.9\\bin;D:\\jdk-25\\jdk-25.0.2\\bin;${env:PATH}"
+        }
+      },
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "java",
+        // 必须用对象形式（不能用单元素数组）：数组会被当作多行模式，不再应用 file/line 默认值，
+        // 于是校验失败并报“说明无法转换为问题匹配器”。此模式不捕获行号，故不会产生“问题”条目。
+        "pattern": {
+          "regexp": "^(.*)$",
+          "message": 1
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".*",
+          "endsPattern": ".*Started StockTradingApplication.*"
+        }
+      },
+      "presentation": {
+        "group": "stock-trading",
+        "panel": "dedicated",
+        "reveal": "always"
+      }
+    },
+    {
+      "label": "frontend:dev",
+      "type": "shell",
+      "command": "npm",
+      "args": ["run", "dev"],
+      "options": {
+        "cwd": "${workspaceFolder}/frontend"
+      },
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "vite",
+        // 必须用对象形式（不能用单元素数组）：数组会被当作多行模式，不再应用 file/line 默认值，
+        // 于是校验失败并报“说明无法转换为问题匹配器”。此模式不捕获行号，故不会产生“问题”条目。
+        "pattern": {
+          "regexp": "^(.*)$",
+          "message": 1
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".*VITE.*",
+          "endsPattern": ".*Local:.*"
+        }
+      },
+      "presentation": {
+        "group": "stock-trading",
+        "panel": "dedicated",
+        "reveal": "always"
+      }
+    },
+    {
+      "label": "start-all",
+      "dependsOn": ["backend:run", "frontend:dev"],
+      "dependsOrder": "parallel",
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "group": "stock-trading",
+        "panel": "dedicated",
+        "reveal": "always"
+      }
+    }
+  ]
+}

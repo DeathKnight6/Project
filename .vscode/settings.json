@@ -1,0 +1,58 @@
+{
+  "java.configuration.updateBuildConfiguration": "automatic",
+  "java.compile.nullAnalysis.mode": "automatic",
+  "java.jdt.ls.java.home": "D:\\jdk-25\\jdk-25.0.2",
+  "java.configuration.runtimes": [
+    {
+      "name": "JavaSE-25",
+      "path": "D:\\jdk-25\\jdk-25.0.2",
+      "default": true
+    }
+  ],
+  "maven.executable.path": "D:\\apache-maven-3.9.9\\bin\\mvn.cmd",
+  "java.import.maven.enabled": true,
+
+  "editor.formatOnSave": true,
+  "editor.tabSize": 2,
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": "explicit"
+  },
+
+  "[java]": {
+    "editor.tabSize": 4,
+    "editor.defaultFormatter": "redhat.java"
+  },
+  "[vue]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+
+  "prettier.semi": false,
+  "prettier.singleQuote": true,
+  "prettier.printWidth": 100,
+  "eslint.validate": ["javascript", "typescript", "vue"],
+
+  "files.exclude": {
+    "**/target": true,
+    "**/node_modules": true,
+    "**/.git": true,
+    "**/dist": true
+  },
+  "search.exclude": {
+    "**/target": true,
+    "**/node_modules": true,
+    "**/dist": true
+  },
+  "files.watcherExclude": {
+    "**/target/**": true,
+    "**/node_modules/**": true,
+    "**/dist/**": true
+  },
+
+  "terminal.integrated.defaultProfile.windows": "Git Bash"
+}
