@@ -49,7 +49,10 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     List<Order> findMatchableBuyOrders(@Param("stockId") Long stockId,
                                        @Param("sellPrice") BigDecimal sellPrice);
 
-    Page<Order> findByUserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
+    Page<Order> findByUserIdOrderByCreatedAtDescIdDesc(Long userId, Pageable pageable);
+
+    Page<Order> findByUserIdAndCanceledFalseAndUndealedGreaterThanOrderByCreatedAtDescIdDesc(
+            Long userId, Integer undealed, Pageable pageable);
 
     List<Order> findByUserIdAndStockIdAndTypeAndCanceledFalseAndUndealedGreaterThan(
             Long userId, Long stockId, com.stocktrading.entity.OrderType type, Integer undealed);

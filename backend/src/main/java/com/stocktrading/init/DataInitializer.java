@@ -3,6 +3,8 @@ package com.stocktrading.init;
 import com.stocktrading.entity.Stock;
 import com.stocktrading.entity.User;
 import com.stocktrading.entity.UserPosition;
+import com.stocktrading.entity.TradingMutex;
+import com.stocktrading.repository.TradingMutexRepository;
 import com.stocktrading.repository.PositionRepository;
 import com.stocktrading.repository.StockRepository;
 import com.stocktrading.repository.UserRepository;
@@ -26,20 +28,26 @@ public class DataInitializer implements CommandLineRunner {
     private final StockRepository stockRepository;
     private final PositionRepository positionRepository;
     private final PasswordEncoder passwordEncoder;
+    private final TradingMutexRepository tradingMutexRepository;
 
     public DataInitializer(UserRepository userRepository,
                            StockRepository stockRepository,
                            PositionRepository positionRepository,
-                           PasswordEncoder passwordEncoder) {
+                           PasswordEncoder passwordEncoder,
+                           TradingMutexRepository tradingMutexRepository) {
         this.userRepository = userRepository;
         this.stockRepository = stockRepository;
         this.positionRepository = positionRepository;
         this.passwordEncoder = passwordEncoder;
+        this.tradingMutexRepository = tradingMutexRepository;
     }
 
     @Override
     @Transactional
     public void run(String... args) {
+        if (!tradingMutexRepository.existsById(TradingMutex.ID)) {
+            tradingMutexRepository.save(new TradingMutex());
+        }
         initUsers();
         initStocks();
         initPositions();

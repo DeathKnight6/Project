@@ -2,8 +2,8 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
-import { cancelOrder, fetchOrders, fetchStocks, fetchSummary, placeOrder } from '@/api/trade'
-import type { OrderType, OrderView, StockView } from '@/api/types'
+import { cancelOrder, fetchOrders, fetchPositions, fetchStocks, fetchSummary, placeOrder } from '@/api/trade'
+import type { OrderType, OrderView, PositionView, StockView } from '@/api/types'
 import { dateTime, money, orderTypeText, price } from '@/utils/format'
 
 const route = useRoute()
@@ -11,6 +11,11 @@ const route = useRoute()
 const stocks = ref<StockView[]>([])
 const orders = ref<OrderView[]>([])
 const availableCash = ref(0)
+const positions = ref<PositionView[]>([])
+const orderPage = ref(0)
+const orderTotal = ref(0)
+const orderSize = 20
+const canceling = ref<number | null>(null)
 const loading = ref(false)
 const submitting = ref(false)
 
@@ -30,6 +35,18 @@ const rules: FormRules = {
 }
 
 const selectedStock = computed(() => stocks.value.find((s) => s.id === form.stockId) || null)
+const availableShares = computed(() => positions.value.find((p) => p.stockId === form.stockId)?.numFree ?? 0)
+const maximumAmount = computed(() => Math.max(0, Math.min(1000000,
+  form.type === 'SELL' ? availableShares.value : Math.floor(availableCash.value / (form.price || Infinity)),
+  Math.floor(100000000 / (form.price || Infinity)))))
+const submitError = computed(() => {
+  if (!form.amount || !form.price) return ''
+  if (!Number.isInteger(form.amount)) return '数量必须为整数'
+  if (estimate.value > 100000000) return '单笔委托金额不能超过 1 亿元'
+  if (form.type === 'BUY' && estimate.value > availableCash.value) return '可用资金不足'
+  if (form.type === 'SELL' && form.amount > availableShares.value) return '可用股票不足'
+  return ''
+})
 
 /** 预估金额，帮助用户看清这单要花多少钱 */
 const estimate = computed(() => {
@@ -47,18 +64,27 @@ const cancelableOrders = computed(() =>
 async function load() {
   loading.value = true
   try {
-    const [list, orderPage, summary] = await Promise.all([
+    const [list, pendingPage, summary, currentPositions] = await Promise.all([
       fetchStocks(),
-      fetchOrders(0, 50),
-      fetchSummary()
+      fetchOrders(orderPage.value, orderSize, true),
+      fetchSummary(),
+      fetchPositions()
     ])
     stocks.value = list
-    orders.value = orderPage.content
+    orders.value = pendingPage.content
+    orderTotal.value = pendingPage.total
+    positions.value = currentPositions
     availableCash.value = summary.cnyFree
+
+    if (orderPage.value > 0 && pendingPage.content.length === 0) {
+      orderPage.value = Math.max(0, Math.ceil(pendingPage.total / orderSize) - 1)
+      await load()
+      return
+    }
 
     // 从「资产概览」点「去交易」跳过来时，自动带上股票并填好现价
     const fromQuery = Number(route.query.stockId)
-    if (fromQuery && list.some((s) => s.id === fromQuery)) {
+    if (!form.stockId && fromQuery && list.some((s) => s.id === fromQuery)) {
       pickStock(fromQuery)
     } else if (!form.stockId && list.length > 0) {
       pickStock(list[0].id)
@@ -79,11 +105,15 @@ function pickStock(stockId: number) {
 }
 
 async function handleSubmit() {
-  if (!formRef.value) {
+  if (!formRef.value || submitting.value) {
     return
   }
   const valid = await formRef.value.validate().catch(() => false)
   if (!valid) {
+    return
+  }
+  if (submitError.value) {
+    ElMessage.warning(submitError.value)
     return
   }
 
@@ -111,18 +141,27 @@ async function handleSubmit() {
 }
 
 async function handleCancel(row: OrderView) {
-  await ElMessageBox.confirm(
-    `确定撤销订单 #${row.id}（${row.stockName} ${orderTypeText(row.type)} ${row.undealed} 股未成交）吗？`,
-    '撤单确认',
-    { confirmButtonText: '撤单', cancelButtonText: '再想想', type: 'warning' }
-  )
+  if (canceling.value !== null) return
+  canceling.value = row.id
   try {
+    await ElMessageBox.confirm(
+      `确定撤销订单 #${row.id}（${row.stockName} ${orderTypeText(row.type)} ${row.undealed} 股未成交）吗？`,
+      '撤单确认',
+      { confirmButtonText: '撤单', cancelButtonText: '再想想', type: 'warning' }
+    )
     await cancelOrder(row.id)
     ElMessage.success('撤单成功，冻结的资金或股票已退回')
     await load()
   } catch {
     // 提示已由响应拦截器处理
+  } finally {
+    canceling.value = null
   }
+}
+
+function changeOrderPage(next: number) {
+  orderPage.value = next - 1
+  load()
 }
 
 onMounted(load)
@@ -132,7 +171,10 @@ onMounted(load)
   <div class="page">
     <div class="page-header">
       <h2>交易下单</h2>
-      <span class="tip">可用资金：{{ money(availableCash) }} 元</span>
+      <div>
+        <span class="tip">可用资金：{{ money(availableCash) }} 元</span>
+        <el-button link type="primary" :loading="loading" @click="load">刷新</el-button>
+      </div>
     </div>
 
     <div v-loading="loading" class="trade-grid">
@@ -189,11 +231,18 @@ onMounted(load)
             <el-input-number
               v-model="form.amount"
               :min="1"
+              :max="1000000"
+              :precision="0"
               :step="100"
               controls-position="right"
               style="width: 100%"
             />
           </el-form-item>
+
+          <div class="quantity-tools">
+            <span class="muted">可卖 {{ availableShares }} 股</span>
+            <el-button link type="primary" :disabled="maximumAmount < 1" @click="form.amount = maximumAmount">最大可委托 {{ maximumAmount }} 股</el-button>
+          </div>
 
           <div class="estimate">
             <span class="muted">预估{{ form.type === 'BUY' ? '支出' : '收入' }}</span>
@@ -211,11 +260,13 @@ onMounted(load)
           <el-button
             type="primary"
             :loading="submitting"
+            :disabled="Boolean(submitError) || loading"
             style="width: 100%; margin-top: 14px"
             @click="handleSubmit"
           >
             提交{{ form.type === 'BUY' ? '买入' : '卖出' }}委托
           </el-button>
+          <el-alert v-if="submitError" :title="submitError" type="warning" :closable="false" style="margin-top: 12px" />
           <p class="rule-tip">
             买卖价格交叉时立即成交；未成交部分挂在委托簿等待撮合，可随时撤单。
           </p>
@@ -224,7 +275,7 @@ onMounted(load)
     </div>
 
     <div class="card">
-      <h3 class="card-title">可撤销的挂单（{{ cancelableOrders.length }}）</h3>
+      <h3 class="card-title">可撤销的挂单（{{ orderTotal }}）</h3>
       <el-table :data="cancelableOrders" stripe>
         <el-table-column prop="id" label="订单号" width="90" />
         <el-table-column label="股票" min-width="150">
@@ -246,18 +297,29 @@ onMounted(load)
         </el-table-column>
         <el-table-column label="操作" width="90" align="center">
           <template #default="{ row }">
-            <el-button link type="danger" @click="handleCancel(row)">撤单</el-button>
+            <el-button link type="danger" :loading="canceling === row.id" :disabled="canceling !== null" @click="handleCancel(row)">撤单</el-button>
           </template>
         </el-table-column>
         <template #empty>
           <span class="muted">当前没有未成交的挂单</span>
         </template>
       </el-table>
+      <el-pagination v-if="orderTotal > orderSize" layout="prev, pager, next" :total="orderTotal"
+        :page-size="orderSize" :current-page="orderPage + 1" @current-change="changeOrderPage"
+        style="margin-top: 14px; justify-content: flex-end" />
     </div>
   </div>
 </template>
 
 <style scoped>
+.quantity-tools {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
 .trade-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);

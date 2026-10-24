@@ -35,7 +35,8 @@ public class PortfolioController {
     @GetMapping("/orders")
     public ApiResponse<PageResult<OrderView>> orders(@AuthenticationPrincipal AuthUser authUser,
                                                      @RequestParam(defaultValue = "0") int page,
-                                                     @RequestParam(defaultValue = "50") int size) {
-        return ApiResponse.ok(portfolioService.orders(authUser.userId(), page, size));
+                                                     @RequestParam(defaultValue = "50") int size,
+                                                     @RequestParam(defaultValue = "false") boolean openOnly) {
+        return ApiResponse.ok(portfolioService.orders(authUser.userId(), page, size, openOnly));
     }
 }

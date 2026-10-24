@@ -6,6 +6,7 @@ import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
 
 public class PlaceOrderRequest {
+    public static final BigDecimal MAX_ORDER_VALUE = new BigDecimal("100000000");
 
     @NotNull(message = "股票不能为空")
     private Long stockId;
@@ -20,6 +21,7 @@ public class PlaceOrderRequest {
 
     @NotNull(message = "数量不能为空")
     @Min(value = 1, message = "数量至少为 1 股")
+    @Max(value = 1000000, message = "单笔数量不能超过 100 万股")
     private Integer amount;
 
     public Long getStockId() {

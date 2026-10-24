@@ -44,12 +44,12 @@ function handlePageChange(next: number) {
 }
 
 async function handleCancel(row: OrderView) {
-  await ElMessageBox.confirm(
-    `确定撤销订单 #${row.id}（${row.stockName} ${orderTypeText(row.type)} ${row.undealed} 股未成交）吗？`,
-    '撤单确认',
-    { confirmButtonText: '撤单', cancelButtonText: '再想想', type: 'warning' }
-  )
   try {
+    await ElMessageBox.confirm(
+      `确定撤销订单 #${row.id}（${row.stockName} ${orderTypeText(row.type)} ${row.undealed} 股未成交）吗？`,
+      '撤单确认',
+      { confirmButtonText: '撤单', cancelButtonText: '再想想', type: 'warning' }
+    )
     await cancelOrder(row.id)
     ElMessage.success('撤单成功')
     await load()

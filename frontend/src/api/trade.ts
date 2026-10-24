@@ -29,6 +29,6 @@ export function fetchPositions() {
   return http.get<PositionView[]>('/portfolio/positions')
 }
 
-export function fetchOrders(page = 0, size = 50) {
-  return http.get<PageResult<OrderView>>('/portfolio/orders', { page, size })
+export function fetchOrders(page = 0, size = 50, openOnly = false) {
+  return http.get<PageResult<OrderView>>('/portfolio/orders', { page, size, openOnly })
 }

@@ -21,7 +21,7 @@ import java.util.List;
  *   <li>成交价取「先到一方」即挂单方的价格——新单永远吃已在委托簿里的单，所以成交价就是对手挂单价；</li>
  *   <li>成交量 = min(新单未成交, 对手未成交)，支持部分成交。</li>
  * </ol>
- * 撮合过程中对手挂单行会被加写锁，同一只股票的并发撮合因此串行化。
+ * 调用方必须先取得全局交易行锁，再锁账户及订单，保证下单与撤单串行执行。
  */
 @Service
 public class MatchingEngine {
@@ -98,7 +98,7 @@ public class MatchingEngine {
         Order buyOrder = incoming.getType() == OrderType.BUY ? incoming : counter;
         Order sellOrder = incoming.getType() == OrderType.BUY ? counter : incoming;
 
-        // 固定按 userId 升序加锁，避免同一用户自成交时与其他事务交叉加锁造成死锁
+        // 在交易入口锁的保护下，按 userId 升序锁定双方账户。
         boolean buyFirst = buyOrder.getUserId() <= sellOrder.getUserId();
         Long firstId = buyFirst ? buyOrder.getUserId() : sellOrder.getUserId();
         Long secondId = buyFirst ? sellOrder.getUserId() : buyOrder.getUserId();

@@ -93,6 +93,11 @@ public class PortfolioService {
     /** 订单列表，按下单时间倒序分页。 */
     @Transactional(readOnly = true)
     public PageResult<OrderView> orders(Long userId, int page, int size) {
+        return orders(userId, page, size, false);
+    }
+
+    @Transactional(readOnly = true)
+    public PageResult<OrderView> orders(Long userId, int page, int size, boolean openOnly) {
         int safePage = Math.max(page, 0);
         int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
 
@@ -100,7 +105,10 @@ public class PortfolioService {
                 .collect(Collectors.toMap(Stock::getId, Function.identity()));
 
         return PageResult.from(
-                orderRepository.findByUserIdOrderByCreatedAtDesc(userId, PageRequest.of(safePage, safeSize)),
+                openOnly
+                        ? orderRepository.findByUserIdAndCanceledFalseAndUndealedGreaterThanOrderByCreatedAtDescIdDesc(
+                                userId, 0, PageRequest.of(safePage, safeSize))
+                        : orderRepository.findByUserIdOrderByCreatedAtDescIdDesc(userId, PageRequest.of(safePage, safeSize)),
                 (Order order) -> {
                     Stock stock = stocks.get(order.getStockId());
                     return OrderView.of(order,

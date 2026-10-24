@@ -7,6 +7,8 @@ import com.stocktrading.exception.BusinessException;
 import com.stocktrading.exception.ErrorCode;
 import com.stocktrading.repository.OrderRepository;
 import com.stocktrading.repository.StockRepository;
+import com.stocktrading.repository.TradingMutexRepository;
+import jakarta.validation.Validator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -26,25 +28,40 @@ public class TradingService {
     private final StockRepository stockRepository;
     private final AccountService accountService;
     private final MatchingEngine matchingEngine;
+    private final TradingMutexRepository tradingMutexRepository;
+    private final Validator validator;
 
     public TradingService(OrderRepository orderRepository,
                           StockRepository stockRepository,
                           AccountService accountService,
-                          MatchingEngine matchingEngine) {
+                          MatchingEngine matchingEngine,
+                          TradingMutexRepository tradingMutexRepository,
+                          Validator validator) {
         this.orderRepository = orderRepository;
         this.stockRepository = stockRepository;
         this.accountService = accountService;
         this.matchingEngine = matchingEngine;
+        this.tradingMutexRepository = tradingMutexRepository;
+        this.validator = validator;
     }
 
     /** 下单：先冻结资金或股票，落单后立刻尝试撮合。 */
     @Transactional
     public TradeResult placeOrder(Long userId, PlaceOrderRequest request) {
+        var violations = validator.validate(request);
+        if (!violations.isEmpty()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST,
+                    violations.iterator().next().getMessage());
+        }
+        lockTrading();
         Stock stock = stockRepository.findById(request.getStockId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.STOCK_NOT_FOUND, "股票不存在"));
 
         int amount = request.getAmount();
         BigDecimal price = request.getPrice().setScale(2, RoundingMode.HALF_UP);
+        if (price.multiply(BigDecimal.valueOf(amount)).compareTo(PlaceOrderRequest.MAX_ORDER_VALUE) > 0) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "单笔委托金额不能超过 1 亿元");
+        }
         User user = accountService.lockUser(userId);
 
         if (request.getType() == OrderType.BUY) {
@@ -115,7 +132,7 @@ public class TradingService {
     /** 撤单：把未成交部分对应的冻结资金或股票退回可用。已成交部分不可撤。 */
     @Transactional
     public void cancelOrder(Long userId, Long orderId) {
-        // 先无锁读一次拿到 userId，保证加锁顺序与 placeOrder 一致（用户 -> 订单）
+        lockTrading();
         Order snapshot = orderRepository.findById(orderId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND, "订单不存在"));
         if (!snapshot.getUserId().equals(userId)) {
@@ -147,5 +164,11 @@ public class TradingService {
             position.setNumFree(position.getNumFree() + pending);
             log.info("撤单 #{}：退回冻结股票 {} 股", orderId, pending);
         }
+    }
+
+    private void lockTrading() {
+        // 数据库行锁随整个业务事务提交/回滚释放，多实例访问同一数据库也遵守此顺序。
+        tradingMutexRepository.lockTrading()
+                .orElseThrow(() -> new IllegalStateException("交易锁尚未初始化"));
     }
 }

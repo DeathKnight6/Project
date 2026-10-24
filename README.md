@@ -42,9 +42,12 @@ bash start.sh
 | 前端页面 | http://localhost:5173 |
 | 登录页 | http://localhost:5173/login |
 | 后端 API | http://localhost:8080/api |
-| H2 控制台 | http://localhost:8080/h2-console |
+| H2 控制台（需手动启用） | http://localhost:8080/h2-console |
 
 H2 控制台登录信息：JDBC URL `jdbc:h2:mem:stockdb`，用户名 `sa`，密码留空。
+
+控制台默认关闭。仅在本地调试需要时，启动前设置环境变量 `H2_CONSOLE_ENABLED=true`；远程访问始终关闭。
+PowerShell 示例：`$env:H2_CONSOLE_ENABLED='true'`，然后在同一终端启动后端。
 
 ---
 
@@ -107,6 +110,7 @@ H2 内存库，JPA 自动建表（`ddl-auto: create-drop`，重启即重置）�
 | `orders` | 订单 | id, user_id, stock_id, type, price, undealed, dealed, canceled, created_at |
 | `user_position` | 持仓 | user_id, stock_id, num_free, num_frozen（联合主键） |
 | `transactions` | 成交 | id, buy_order_id, sell_order_id, price, amount, created_at |
+| `trading_mutex` | 交易入口互斥锁 | 固定 id=1，下单和撤单共用 |
 
 关系：`users` 1–N `orders` / `user_position`，`stock` 1–N `orders` / `user_position`，
 `orders` 通过 `buy_order_id`、`sell_order_id` 关联到 `transactions`。
@@ -140,11 +144,13 @@ H2 内存库，JPA 自动建表（`ddl-auto: create-drop`，重启即重置）�
 
 已成交部分不可撤销。买单出价高于成交价时，多冻结的差额会自动退回可用资金。
 
-### 并发控制
+### 并发控制与输入限制
 
-- 撮合时对委托簿中的对手单行加写锁（`PESSIMISTIC_WRITE`），同一只股票的并发撮合串行化。
-- 资金与持仓变动前先对用户行、持仓行加写锁。
-- 涉及买卖双方时按 `userId` 升序加锁，避免同一用户自成交场景下的死锁。
+- 下单和撤单在读取业务数据前，先锁定 `trading_mutex` 的唯一一行；锁随整个事务提交或回滚释放。
+- 交易事务串行执行，避免撤单与撮合互相等待，也避免同时到达的买卖订单互相不可见而遗留可成交挂单。
+- 用户、持仓和对手订单仍保留行锁。此方案适合课程演示和小规模模拟交易，所有股票共享交易入口，吞吐量受限；高并发场景需要重新设计订单队列和账户结算流程。
+- 单笔数量为 1～1,000,000 股的整数，价格最多保留两位小数，单笔委托金额不超过 100,000,000 元。前后端均检查，服务层再次校验。
+- 小数数量、未知买卖方向或错误 JSON 返回 HTTP 400 与业务码 `1001`。
 
 ### 认证
 
@@ -175,6 +181,8 @@ H2 内存库，JPA 自动建表（`ddl-auto: create-drop`，重启即重置）�
 | GET | `/api/portfolio/positions` | 持仓列表 | 是 |
 | GET | `/api/portfolio/orders?page=0&size=50` | 订单列表（分页） | 是 |
 
+订单接口支持 `openOnly=true`：由后端先筛选未撤销且有未成交数量的订单，再分页。交易页使用该参数，较早的挂单不会被最近的历史订单遮蔽；同一时间的订单按 ID 倒序排列。
+
 ### 接口调用示例
 
 ```bash
@@ -186,10 +194,10 @@ TOKEN=$(curl -s -X POST http://localhost:8080/api/auth/login \
 # 2. 查看股票列表
 curl -s http://localhost:8080/api/stock/list
 
-# 3. 买入 600519 100 股，出价 1680.00
+# 3. 买入 600519 10 股，出价 1680.00（初始可用资金为 100000 元）
 curl -s -X POST http://localhost:8080/api/trade/place \
   -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" \
-  -d '{"stockId":1,"type":"BUY","price":1680.00,"amount":100}'
+  -d '{"stockId":1,"type":"BUY","price":1680.00,"amount":10}'
 
 # 4. 查看持仓
 curl -s http://localhost:8080/api/portfolio/positions -H "Authorization: Bearer $TOKEN"
@@ -220,6 +228,10 @@ cd backend && mvn test
 
 `MatchingEngineTest` 覆盖 10 个用例：完全成交、部分成交、价格优先、时间优先、成交价取挂单方并退还差价、
 价格不交叉不成交、撤单解冻、重复撤单被拒、资金不足、可用股票不足。
+
+`TradingIntegrationTest` 另有 7 个用例：20 笔并发买卖订单、撤单与成交竞争时的资金及股票守恒、历史订单超过 50 条时仍能查询早期挂单、未登录访问 `/api/auth/me`、超量/超额委托、非法买卖方向及小数数量。并发测试使用独立事务与独立测试数据库。
+
+前端检查与构建：`cd frontend` 后执行 `npm run build`。
 
 ---
 
