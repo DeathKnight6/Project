@@ -5,7 +5,7 @@ import loginPicture from '../../Picture/老实赚钱很枯燥吧.png'
 <template>
   <div class="auth-shell">
     <section class="auth-art">
-      <router-link to="/login" class="auth-brand"><span aria-hidden="true">禾</span>青禾交易</router-link>
+      <router-link to="/login" class="auth-brand"><span aria-hidden="true">股</span>模拟股票交易系统</router-link>
       <div class="poster-scene">
         <h2>开门见财</h2>
         <div class="picture-mount"><img :src="loginPicture" alt="老实赚钱，很枯燥吧？" /></div>
@@ -39,6 +39,6 @@ import loginPicture from '../../Picture/老实赚钱很枯燥吧.png'
 @media(max-width:1100px) { .auth-art { padding: 36px; }.auth-form-panel { padding: 46px 38px; }.auth-shell { grid-template-columns: minmax(0, 1.2fr) minmax(380px, 1fr); }.auth-brand { font-size: 25px; }.lantern-left { display: none; } }
 @media(max-width:760px) {
   .auth-shell { grid-template-columns: 1fr; }.auth-art { min-height: 0; padding: 26px 24px 30px; border-right: 0; border-bottom: 6px solid var(--gold); }
-  .auth-brand { font-size: 23px; }.auth-brand > span { width: 32px; height: 32px; font-size: 24px; }.poster-scene { padding: 32px 0 0; max-width: 440px; }.poster-scene h2 { display: none; }.poster-bottom { display: none; }.picture-mount { padding: 5px; outline-offset: 4px; }.auth-form-panel { padding: 36px 28px 42px; }.auth-card { padding: 0; }.lantern-right { right: 24px; transform: scale(.7) translateY(-22px); transform-origin: top; }
+  .auth-brand { font-size: 20px; letter-spacing: 1px; }.auth-brand > span { width: 32px; height: 32px; font-size: 24px; }.poster-scene { padding: 32px 0 0; max-width: 440px; }.poster-scene h2 { display: none; }.poster-bottom { display: none; }.picture-mount { padding: 5px; outline-offset: 4px; }.auth-form-panel { padding: 36px 28px 42px; }.auth-card { padding: 0; }.lantern-right { right: 24px; transform: scale(.7) translateY(-22px); transform-origin: top; }
 }
 </style>
