@@ -20,15 +20,32 @@
 | npm | 9+ | `npm -v` |
 
 > 本机已装 JDK 25（`D:\jdk-25\jdk-25.0.2`）与 Maven 3.9.9（`D:\apache-maven-3.9.9`）。
-> 若这两个目录不在系统 `PATH` 中，`start.sh` 和 `.vscode/tasks.json` 已内置回退路径，无需额外配置。
+> 若这两个目录不在系统 `PATH` 中，`start.ps1`、`start.sh` 和 `.vscode/tasks.json` 已内置回退路径，无需额外配置。
 
 ### 2. 一键启动
+
+**Windows 双击启动（最简单）：**
+
+在资源管理器中双击项目根目录的 **`启动系统.bat`**，前后端就绪后会自动打开浏览器。启动失败时窗口会保留错误信息。使用过程中保留启动窗口，按 `Ctrl+C` 停止本次启动的服务。
+
+**Windows PowerShell（推荐，无需安装 Bash）：**
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\start.ps1
+```
+
+该命令仅为这一次脚本执行设置执行策略，不修改系统的永久设置。脚本会自动查找 JDK 25+、Maven 和 Node.js；使用 `npm.cmd` 避免 `npm.ps1` 的执行策略问题。日志写入 `.run/`。
+
+只检查环境：`powershell -NoProfile -ExecutionPolicy Bypass -File .\start.ps1 -Check`。
+首次下载依赖较慢时，可在启动命令末尾添加 `-StartupTimeoutSeconds 600`。
+
+**Git Bash / Linux / macOS：**
 
 ```bash
 bash start.sh
 ```
 
-脚本会依次启动后端与前端，并在终端打印访问地址；`Ctrl+C` 可同时停止两个服务。
+脚本会依次启动后端与前端，并在终端打印访问地址；`Ctrl+C` 会停止本次启动的服务。Windows 脚本会复用已就绪的现有服务。如果两个服务已经运行，直接显示访问地址后退出。
 
 ### 3. 或在 VS Code 中启动
 
@@ -94,6 +111,8 @@ stock-trading-system/
 │       ├── components/       # 公共组件
 │       └── utils/            # 工具函数
 ├── README.md
+├── 启动系统.bat              # 双击启动并打开浏览器
+├── start.ps1                 # Windows PowerShell 启动入口
 └── start.sh
 ```
 

@@ -3,6 +3,7 @@ import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { useUserStore } from '@/stores/user'
+import AuthShell from '@/components/AuthShell.vue'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -41,7 +42,7 @@ const rules: FormRules = {
 }
 
 async function handleSubmit() {
-  if (!formRef.value) {
+  if (!formRef.value || loading.value) {
     return
   }
   const valid = await formRef.value.validate().catch(() => false)
@@ -67,33 +68,29 @@ async function handleSubmit() {
 </script>
 
 <template>
-  <div class="auth-page">
-    <div class="auth-card">
-      <h1>注册账号</h1>
-      <p class="subtitle">注册即赠送 10 万元模拟资金</p>
+  <AuthShell>
+      <h1>注册</h1>
 
       <el-form ref="formRef" :model="form" :rules="rules" label-position="top" @keyup.enter="handleSubmit">
         <el-form-item label="姓名" prop="name">
-          <el-input v-model="form.name" placeholder="请输入姓名" clearable />
+          <el-input v-model="form.name" maxlength="64" autocomplete="name" clearable />
         </el-form-item>
         <el-form-item label="登录名" prop="loginName">
-          <el-input v-model="form.loginName" placeholder="3-32 位字母、数字或下划线" clearable />
+          <el-input v-model="form.loginName" autocomplete="username" clearable />
         </el-form-item>
         <el-form-item label="密码" prop="passwd">
-          <el-input v-model="form.passwd" type="password" placeholder="6-32 位" show-password />
+          <el-input v-model="form.passwd" type="password" autocomplete="new-password" show-password />
         </el-form-item>
         <el-form-item label="确认密码" prop="confirm">
-          <el-input v-model="form.confirm" type="password" placeholder="请再次输入密码" show-password />
+          <el-input v-model="form.confirm" type="password" autocomplete="new-password" show-password />
         </el-form-item>
         <el-button type="primary" :loading="loading" style="width: 100%" @click="handleSubmit">
-          注册
+          注册账号
         </el-button>
       </el-form>
 
       <div class="footer-link">
-        已有账号？
-        <router-link to="/login">返回登录</router-link>
+        <router-link to="/login">返回登录 →</router-link>
       </div>
-    </div>
-  </div>
+  </AuthShell>
 </template>
